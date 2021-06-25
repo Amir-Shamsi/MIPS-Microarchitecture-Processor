@@ -57,7 +57,6 @@ public class Sample {
         for (int i = 0; i < 8; ++i) {
             temp[4][i] = true;
         }
-
         mem.setMemory(temp);
 
         //write
