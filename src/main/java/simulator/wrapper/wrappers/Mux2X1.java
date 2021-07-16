@@ -8,12 +8,8 @@ import simulator.network.Link;
 import simulator.wrapper.Wrapper;
 
 public class Mux2X1 extends Wrapper {
-    private int firstArgSize, secondArgSize;
-    public int muxResultSize;
     public Mux2X1(String label, String stream, Link... links) {
-        super(label, stream.split(":")[0], links);
-        firstArgSize = Integer.parseInt(stream.split(":")[1]);
-        secondArgSize = Integer.parseInt(stream.split(":")[2]);
+        super(label, stream, links);
     }
 
     @Override
