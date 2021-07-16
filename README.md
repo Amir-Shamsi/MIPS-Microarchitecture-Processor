@@ -1,1 +1,1 @@
-# MIPS-Microarchitecture-Processor
+# MIPS Microarchitecture Processor
