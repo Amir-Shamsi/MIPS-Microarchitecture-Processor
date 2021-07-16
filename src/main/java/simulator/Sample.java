@@ -164,7 +164,7 @@ public class Sample {
                 newRD2[index] = Simulator.falseLogic;
         }
 
-        Mux2X1 rd2ORSignE = new Mux2X1("rd2ORSignE", "38X32", CUControllersSet.ALUSrc);
+        Mux2X1 rd2ORSignE = new Mux2X1("rd2ORSignE", "65X32", CUControllersSet.ALUSrc);
         rd2ORSignE.addInput(newRD2);
         rd2ORSignE.addInput(extendedImmediate);
 
