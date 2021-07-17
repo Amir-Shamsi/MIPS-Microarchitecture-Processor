@@ -5,7 +5,7 @@ import simulator.gates.combinational.ByteMemory;
 import simulator.gates.sequential.Clock;
 import simulator.network.Link;
 import simulator.sets.CUControllersSet;
-import simulator.sets.InstructionSets;
+import simulator.sets.InstructionSet;
 import simulator.wrapper.wrappers.ProgramCounter;
 import simulator.wrapper.wrappers.ShiftLeftLogical;
 import simulator.wrapper.wrappers.SignExtension;
@@ -70,14 +70,13 @@ public class Sample {
         /* ********************************************************************************************************** */
 
         //after reading we should store instructions
-        InstructionSets instructionSets = new InstructionSets();
-        //now we separate data
-        separateMemoryData(mem, instructionSets);
+        //we separate data
+        separateMemoryData(mem);
 
         /* ********************************************************************************************************** */
 
         //sign extension 16-bit to 32-bit (For branches)
-        SignExtension S16X32 = new SignExtension("SIGN_EX16TO32","16X32", instructionSets.immediate);
+        SignExtension S16X32 = new SignExtension("SIGN_EX16TO32","16X32", InstructionSet.immediate);
 
         //store the extension output
         Link[] extendedImmediate = new Link[32];
@@ -92,12 +91,12 @@ public class Sample {
 
         // creating Control-Unit
         ControlUnit controlUnit = new ControlUnit("CONTROL_UNIT","6X9",
-                instructionSets.opCode[0],
-                instructionSets.opCode[1],
-                instructionSets.opCode[2],
-                instructionSets.opCode[3],
-                instructionSets.opCode[4],
-                instructionSets.opCode[5]
+                InstructionSet.opCode[0],
+                InstructionSet.opCode[1],
+                InstructionSet.opCode[2],
+                InstructionSet.opCode[3],
+                InstructionSet.opCode[4],
+                InstructionSet.opCode[5]
         );
 
         /* ********************************************************************************************************** */
@@ -105,7 +104,7 @@ public class Sample {
         // For jumping to the targetAddress
         //shift left 26-bit targetAddress <<2        ~OUTPUT:28-bit
         ShiftLeftLogical shiftTargetAddress = new ShiftLeftLogical("TARGET_ADD_SHIFT_LEFT_X2", "26<<2",
-                instructionSets.targetAddress);
+                InstructionSet.targetAddress);
 
         //store shifted targetAddress
         Link[] shiftedTargetAddress= new Link[28];
@@ -131,10 +130,10 @@ public class Sample {
 
         //Register-File Process
         RegisterFile registerFile = new RegisterFile("REG_FILE", "32X32", CUControllersSet.RegWrite);
-        registerFile.addInput(instructionSets.resSource);
+        registerFile.addInput(InstructionSet.resSource);
         Mux2X1 rtORrd = new Mux2X1("MUX2X1_0", "11X5", CUControllersSet.RegDst);
-        rtORrd.addInput(instructionSets.resTarget); //as first arg
-        rtORrd.addInput(instructionSets.resDestination); //as second arg
+        rtORrd.addInput(InstructionSet.resTarget); //as first arg
+        rtORrd.addInput(InstructionSet.resDestination); //as second arg
 
         //store Mux result
         Link[] rtORrd_Result = new Link[5];
@@ -168,9 +167,22 @@ public class Sample {
         rd2ORSignE.addInput(newRD2);
         rd2ORSignE.addInput(extendedImmediate);
 
-        ALU alu1 = new ALU("ALU1", "64X32");
-        alu1.addInput();
-        //TODO: Continue
+        //store mux output
+        Link[] rd2ORSignE_MuxOutput = new Link[32];
+        for (int index = 0; index < 32; index++)
+            rd2ORSignE_MuxOutput[index] = rd2ORSignE.getInput(index);
+
+        //setting up a ALUControl and get operation code
+        ALUControl aluControl = new ALUControl("ALU_CONTROL", "0X4");
+        Link[] operationCode = new Link[4];
+        for(int index = 0; index < 4; index++)
+            operationCode[index] = aluControl.getOutput(index);
+
+        //ALU (4-bits ALUControl & 32-bits RD1 & 32-bits MuxOutput)
+        ALU alu1 = new ALU("ALU1", "68X32");
+        alu1.addInput(operationCode);
+        alu1.addInput(RD1);
+        alu1.addInput(rd2ORSignE_MuxOutput);
 
         /* ********************************************************************************************************** */
 
@@ -193,33 +205,33 @@ public class Sample {
                              {false,false,false,false,false,false,false,true},{false,false,false,false,false,false,false,false},{false,false,false,false,false,false,false,false},{false,false,false,false,false,false,false,false},
                              {false,false,false,false,false,false,false,true},{false,false,false,false,false,false,false,false},{false,false,false,false,false,false,false,false},{false,false,false,false,false,false,false,false},
                              {false,false,false,false,false,false,false,true},{false,false,false,false,false,false,false,false},{false,false,false,false,false,false,false,false},{false,false,false,false,false,false,false,false},
-         /*beq $t1,$t2,1*/   {false,false,false,true,false, false,false,true},{false,false,true,false,true, false, true, false},{false,false,false,false,false,false,false,false},{false,false,false,false,false ,false,false,true},
+                             {false,false,false,true,false, false,false,true},{false,false,true,false,true, false, true, false},{false,false,false,false,false,false,false,false},{false,false,false,false,false ,false,false,true},
                              {false,false,false,false,false,false,false,true},{false,false,false,false,false,false,false,false},{false,false,false,false,false,false,false,false},{false,false,false,false,false,false,false,false},
-         /* lw $t1,0x0($t1)*/{true,false, false, false,true, true,false,true},{false,false,false,false, true,false, false,true},{false,false,false,false, true,false, false,true},{false,false,false,false,false,false,false,false},
-      /*lw $t2,0x1($t2)*/  	 {true,false,false, false, true,true, false,true},{false,false,false,false, true, false,true,false},{false,false,false,false,true, false, true,false},{false,false,false,false,false,false, false,true},
-         /* sw $t1,0x1($t2)*/{true,false,true,false, true, true, false, true},{false,true,false,false, true, false, false,true},{false,false,false,false,false,false,false,false},{false,false,false,false,false,false,false,true}};
+                             {true,false, false, false,true, true,false,true},{false,false,false,false, true,false, false,true},{false,false,false,false, true,false, false,true},{false,false,false,false,false,false,false,false},
+                          	 {true,false,false, false, true,true, false,true},{false,false,false,false, true, false,true,false},{false,false,false,false,true, false, true,false},{false,false,false,false,false,false, false,true},
+                             {true,false,true,false, true, true, false, true},{false,true,false,false, true, false, false,true},{false,false,false,false,false,false,false,false},{false,false,false,false,false,false,false,true}};
     }
 
 
-    static void separateMemoryData(ByteMemory mem, InstructionSets sets){
+    static void separateMemoryData(ByteMemory mem){
         for(int i = 0 ;i < 32 ;i++) {
             if (i < 6) {
-                sets.opCode[i] = mem.getOutput(i);
-                sets.func[5-i]=mem.getOutput(i+26);
+                InstructionSet.opCode[i] = mem.getOutput(i);
+                InstructionSet.func[5-i]=mem.getOutput(i+26);
                 if (i < 5){
-                    sets.shiftAmount[i]=mem.getOutput(i+21);
+                    InstructionSet.shiftAmount[i]=mem.getOutput(i+21);
                 }
             }
             if(i <= 4){
-                sets.resSource[i]=mem.getOutput((4-i)+6);
-                sets.resTarget[i]=mem.getOutput((4-i)+11);
-                sets.resDestination[4-i]=mem.getOutput(i+16);
+                InstructionSet.resSource[i]=mem.getOutput((4-i)+6);
+                InstructionSet.resTarget[i]=mem.getOutput((4-i)+11);
+                InstructionSet.resDestination[4-i]=mem.getOutput(i+16);
             }
             if(i < 26){
-                sets.targetAddress[i]=mem.getOutput(i+6);
+                InstructionSet.targetAddress[i]=mem.getOutput(i+6);
             }
             if(i < 16){
-                sets.immediate[i]=mem.getOutput(i+16);
+                InstructionSet.immediate[i]=mem.getOutput(i+16);
             }
         }
     }
