@@ -2,6 +2,7 @@ package simulator;
 
 import simulator.control.Simulator;
 import simulator.gates.combinational.ByteMemory;
+import simulator.gates.combinational.Or;
 import simulator.gates.sequential.Clock;
 import simulator.network.Link;
 import simulator.sets.CUControllersSet;
@@ -38,6 +39,11 @@ public class Sample {
         for (int index = 0; index < 32; ++index)
             pcAdder_newAddress.addInput(pc.getOutput(0));
         pcAdder_newAddress.addInput(four);
+
+        //storing next-pc-address
+        Link[] nextPcAddress = new Link[32];
+        for (int index = 0; index < 32; ++index)
+            nextPcAddress[index] = pcAdder_newAddress.getOutput(index);
 
 
         //creating-Memory
@@ -122,9 +128,16 @@ public class Sample {
         }
         /* ********************************************************************************************************** */
 
-        //pass new Address to pc and jump to address
-        //TODO - pc jump is incomplete!
-        pc.addInput(jumpAddress);
+        //pass jump-address and next-pc to Mux
+        Mux2X1 JA_OR_NP_MUX = new Mux2X1("JA_OR_NP", "65X32", CUControllersSet.Branch);
+        JA_OR_NP_MUX.addInput(nextPcAddress);
+        JA_OR_NP_MUX.addInput(jumpAddress);
+
+        //store mux output
+        Link[] ja_or_np_MuxOutput = new Link[32];
+        for (int index = 0; index < 32; index++)
+            ja_or_np_MuxOutput[index] = JA_OR_NP_MUX.getInput(index);
+        pc.addInput(ja_or_np_MuxOutput);
 
         /* ********************************************************************************************************** */
 
@@ -183,6 +196,8 @@ public class Sample {
         alu1.addInput(operationCode);
         alu1.addInput(RD1);
         alu1.addInput(rd2ORSignE_MuxOutput);
+
+
 
         /* ********************************************************************************************************** */
 
