@@ -3,6 +3,7 @@ package simulator;
 import simulator.control.Simulator;
 import simulator.gates.combinational.ByteMemory;
 import simulator.gates.combinational.Or;
+import simulator.gates.sequential.BigClock;
 import simulator.gates.sequential.Clock;
 import simulator.network.Link;
 import simulator.sets.CUControllersSet;
@@ -17,9 +18,7 @@ public class Sample {
     public static void main(String[] args) {
 
         //processor-clock
-        Clock clock = new Clock("CLOCK1", 1000);
-
-        Link[] pci = pcInitialize();
+        BigClock clock = new BigClock("CLOCK");
 
         //processor-ProgramCounter
         ProgramCounter pc = new ProgramCounter("PC", "32X32", clock.getOutput(0)
@@ -63,8 +62,8 @@ public class Sample {
 
         //assign instructions into memory
         mem.setMemory(memInstruction);
-        //make memory READ-ONLY
-        mem.addInput(Simulator.falseLogic);
+        //pass RegWrite
+        mem.addInput(CUControllersSet.RegWrite);
 
         /* ********************************************************************************************************** */
 
@@ -197,8 +196,38 @@ public class Sample {
         alu1.addInput(RD1);
         alu1.addInput(rd2ORSignE_MuxOutput);
 
+        //storing alu result
+        Link[] aluResult = new Link[32];
+        for(int index = 0; index < 32; index++)
+            aluResult[index] = alu1.getInput(index);
 
+        /* ********************************************************************************************************** */
 
+        // Data Memory
+        ByteMemory dataMem = new ByteMemory("DATA_MEM");
+        dataMem.addInput(Simulator.trueLogic);
+        dataMem.addInput(clock.getOutput(0));
+        dataMem.addInput(CUControllersSet.RegWrite);
+
+        //pass alu result to memory
+        dataMem.addInput(aluResult);
+
+        //storing data memory result
+        Link[] memResult = new Link[32];
+        for (int index =0; index < 32; index++)
+            memResult[index] = dataMem.getOutput(index);
+
+        //MemToReg Mux
+        Mux2X1 memToRegMUX = new Mux2X1("MEM_TO_REG_MUX", "64X32", CUControllersSet.MemToReg);
+        memToRegMUX.addInput(aluResult);
+        memToRegMUX.addInput(memResult);
+
+        //storing mux result
+        Link[] memToRegMUX_Result = new Link[32];
+        for (int index =0; index < 32; index++)
+            memToRegMUX_Result[index] = memToRegMUX.getOutput(index);
+
+        mem.addInput(memToRegMUX_Result);
         /* ********************************************************************************************************** */
 
         Simulator.debugger.addTrackItem(clock, pc, mem);
@@ -214,17 +243,19 @@ public class Sample {
     }
 
     private static Boolean[][] getSampleMemoryInstruction() {
+        return new Boolean[][]{
+                {false,false,false,false,false,false,false,true},{false,false,false,false,false,false,false,false},{false,false,false,false,false,false,false,false},{false,false,false,false,false,false,false,false},
+                {false,false,false,false,false,false,false,true},{false,false,false,false,false,false,false,false},{false,false,false,false,false,false,false,false},{false,false,false,false,false,false,false,false},
+                {false,false,false,true,false, false,false,true},{false,false,true,false,true, false, true, false},{false,false,false,false,false,false,false,false},{false,false,false,false,false ,false,false,true},
+                {false,false,false,false,true,false,false,false},{false,false,false,false,false,false,false,false},{false,false,false,false,false,false,false,false},{false,false,false,false,false, true,false,false},
+                {true,false, false, false,true, true,false,true},{false,false,false,false, true,false, false,true},{false,false,false,false, true,false, false,true},{false,false,false,false,false,false,false,false},
+                {false,false,false,false,false,false,false,true},{false,false,false,false,false,false,false,false},{false,false,false,false,false,false,false,false},{false,false,false,false,false,false,false,false},
+                {true,false,false, false, true,true, false,true},{false,false,false,false, true, false,true,false},{false,false,false,false,true, false, true,false},{false,false,false,false,false,false, false,true},
+                {false,false,false,false,false,false,false,true},{false,false,false,false,false,false,false,false},{false,false,false,false,false,false,false,false},{false,false,false,false,false,false,false,false},
+                {false,false,false,false,false,false,false,true},{false,false,false,false,false,false,false,false},{false,false,false,false,false,false,false,false},{false,false,false,false,false,false,false,false},
+                {true,false,true,false, true, true, false, true},{false,true,false,false,true, false, false, true},{false,false,false,false,false,false,false,false},{false,false,false, false,false,false,false,true}
+        };
 
-        return new Boolean[][]{{false,false,false,false,false, false,false,true},{false,false,false,false,false,false,false,false},{false,false,false,false,false,false,false,false},{false,false,false,false,false,false,false,false},
-                             {false,false,false,false,true,false,false,false},{false,false,false,false,false,false,false,false},{false,false,false,false,false,false,false,false},{false,false,false,false,false, true,false,false},
-                             {false,false,false,false,false,false,false,true},{false,false,false,false,false,false,false,false},{false,false,false,false,false,false,false,false},{false,false,false,false,false,false,false,false},
-                             {false,false,false,false,false,false,false,true},{false,false,false,false,false,false,false,false},{false,false,false,false,false,false,false,false},{false,false,false,false,false,false,false,false},
-                             {false,false,false,false,false,false,false,true},{false,false,false,false,false,false,false,false},{false,false,false,false,false,false,false,false},{false,false,false,false,false,false,false,false},
-                             {false,false,false,true,false, false,false,true},{false,false,true,false,true, false, true, false},{false,false,false,false,false,false,false,false},{false,false,false,false,false ,false,false,true},
-                             {false,false,false,false,false,false,false,true},{false,false,false,false,false,false,false,false},{false,false,false,false,false,false,false,false},{false,false,false,false,false,false,false,false},
-                             {true,false, false, false,true, true,false,true},{false,false,false,false, true,false, false,true},{false,false,false,false, true,false, false,true},{false,false,false,false,false,false,false,false},
-                          	 {true,false,false, false, true,true, false,true},{false,false,false,false, true, false,true,false},{false,false,false,false,true, false, true,false},{false,false,false,false,false,false, false,true},
-                             {true,false,true,false, true, true, false, true},{false,true,false,false, true, false, false,true},{false,false,false,false,false,false,false,false},{false,false,false,false,false,false,false,true}};
     }
 
 
